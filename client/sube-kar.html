@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mahal Kafe</title>
+  <!-- Ana CSS dosyam -->
+  <link rel="stylesheet" href="./assets/style.css" />
+
+  <!-- Font Awesome İkon Paketi (CDN) -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    integrity="sha512-..."
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+</head>
+<body>
+
+  <!-- Üst Kısım: Header -->
+  <header>
+    <div class="header-left">
+      <span class="logo-text">
+        <img src="./assets/images/logo.png">
+      </span>
+    </div>
+    <div class="header-center">
+      <h1>Mahal</h1>
+    </div>
+    <div class="header-right">
+      <i class="fa fa-user"></i>
+      <span class="user-name">Sena Pehlivan</span>
+    </div>
+  </header>
+  <style>
+    /* Filtre & Chart stil */
+    .filters {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .filters select {
+      padding: 5px 10px;
+      font-size: 14px;
+    }
+    #btnGetData {
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    #chartContainer {
+      max-width: 800px;
+      margin-top: 30px;
+    }
+  </style>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+
+
+  <!-- Layout -->
+  <div class="container">
+    <aside class="sidebar">
+        <ul>
+          <li>
+            <a href="/">
+              <i class="fa fa-home"></i> Anasayfa
+            </a>
+          </li>
+          <li>
+            <a href="sube-ciro.html">
+              <i class="fa fa-chart-line"></i> Şube - Ciro Analizleri
+            </a>
+          </li>
+          <li>
+            <a href="sube-kar.html">
+              <i class="fa fa-dollar-sign"></i> Şube - Kar Analizleri
+            </a>
+          </li>
+          <li>
+            <a href="sube-musteri.html">
+              <i class="fa fa-users"></i> Şube Müşteri Analizleri
+            </a>
+          </li>
+          <li>
+            <a href="sube-karsilastirma.html">
+              <i class="fa fa-balance-scale"></i> Şube - Karşılaştırma
+            </a>
+          </li>
+          <!--  Çıkış Yap menüsü -->
+          <li>
+            <a href="#" onclick="logout()">
+              <i class="fa fa-sign-out"></i> Çıkış Yap
+            </a>
+          </li>
+        </ul>
+      </aside>
+      <script>
+        function logout() {
+          // Tüm localStorage değerlerini temizle
+          localStorage.clear();
+          // Giriş sayfasına yönlendir
+          window.location.href = "login.html";
+        }
+      </script>
+      <main>
+        <h2>Şube Kar Analizi</h2>
+      
+        <!-- Filtre Alanı -->
+        <div class="filters">
+          <label for="monthSelect">Ay Seç:</label>
+          <select id="monthSelect">
+            <option value="2024-01" selected>Ocak 2024</option>
+            <option value="2024-02">Şubat 2024</option>
+            <option value="2024-03">Mart 2024</option>
+            <option value="2024-04">Nisan 2024</option>
+            <option value="2024-05">Mayıs 2024</option>
+            <option value="2024-06">Haziran 2024</option>
+          </select>
+      
+          <button id="btnGetData">Verileri Göster</button>
+        </div>
+      
+        <!-- 1) Aylık Kar Chart -->
+        <div style="width: 800px; height: 400px; margin-bottom: 30px;" id="chartContainer">
+          <canvas id="karChart" style="width: 100%; height: 100%;"></canvas>
+        </div>
+      
+        <!-- 2) 6 Aylık Toplam Kar Chart -->
+        <h3 style="margin-top: 4rem; margin-bottom: 4rem;">Ocak–Haziran 2024 Toplam Kar Analizi</h3>
+        <div style="width: 800px; height: 400px;" id="chartContainer6">
+          <canvas id="karChart6" style="width: 100%; height: 100%;"></canvas>
+        </div>
+      
+        <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+          const monthSelect = document.getElementById('monthSelect');
+          const btnGetData = document.getElementById('btnGetData');
+      
+          const karChartCanvas = document.getElementById('karChart');   // 1. grafik
+          const karChart6Canvas = document.getElementById('karChart6'); // 2. grafik
+      
+          let karChart;
+          let karChart6;
+      
+          // Tablolardan çekilen veriler
+          let subeler = [];
+          let urunler = [];
+          let siparisler = [];
+      
+          // 1) Verileri fetch
+          try {
+            const subeResp = await fetch('/api/subeler');
+            subeler = await subeResp.json();
+      
+            const urunResp = await fetch('/api/urunler');
+            urunler = await urunResp.json();
+      
+            const sipResp = await fetch('/api/siparisler');
+            siparisler = await sipResp.json();
+      
+          } catch(err) {
+            console.error("[ERROR]", err);
+            return;
+          }
+      
+          // subeMap: sube_id -> sube_adi
+          const subeMap = {};
+          subeler.forEach(s => {
+            subeMap[s.id] = s.sube_adi;
+          });
+      
+          // urunMap: urun_id -> (satis_fiyati - alis_fiyati)
+          const urunMap = {};
+          urunler.forEach(u => {
+            const alis = parseFloat(u.alis_fiyati) || 0;
+            const satis = parseFloat(u.satis_fiyati) || 0;
+            urunMap[u.id] = (satis - alis);
+          });
+      
+          // Tek ay kâr
+          function getKarDataByMonth(month) {
+            const subeIdToKar = {};
+            subeler.forEach(s => subeIdToKar[s.id] = 0);
+      
+            siparisler.forEach(sip => {
+              const d = new Date(sip.siparis_tarihi);
+              if (!isNaN(d)) {
+                const y = d.getFullYear();
+                const m = d.getMonth() + 1;
+                const yyyyMM = `${y}-${String(m).padStart(2,'0')}`;
+                if (yyyyMM === month) {
+                  const karMarji = urunMap[sip.urun_id] || 0;
+                  const adet = sip.adet || 0;
+                  subeIdToKar[sip.sube_id] += (karMarji * adet);
+                }
+              }
+            });
+            return subeIdToKar;
+          }
+      
+          // Ocak–Haziran kâr
+          function getKarDataJanToJun() {
+            const subeIdToKar6 = {};
+            subeler.forEach(s => subeIdToKar6[s.id] = 0);
+      
+            siparisler.forEach(sip => {
+              const d = new Date(sip.siparis_tarihi);
+              if (!isNaN(d)) {
+                const y = d.getFullYear();
+                const m = d.getMonth() + 1;
+                if (y === 2024 && m >= 1 && m <= 6) {
+                  const karMarji = urunMap[sip.urun_id] || 0;
+                  const adet = sip.adet || 0;
+                  subeIdToKar6[sip.sube_id] += (karMarji * adet);
+                }
+              }
+            });
+            return subeIdToKar6;
+          }
+      
+          // Butona tıklayınca
+          btnGetData.addEventListener('click', () => {
+            const selectedMonth = monthSelect.value;
+      
+            // 1) Tek ay
+            const karDataObj = getKarDataByMonth(selectedMonth);
+            // 2) 6 ay
+            const karDataObj6 = getKarDataJanToJun();
+      
+            // A) Tek ay Chart
+            const labels = subeler.map(s => subeMap[s.id]);
+            const karData = subeler.map(s => karDataObj[s.id] || 0);
+      
+            if (karChart) karChart.destroy();
+      
+            karChart = new Chart(karChartCanvas, {
+              type: 'bar',
+              data: {
+                labels,
+                datasets: [{
+                  label: `Kâr (${selectedMonth})`,
+                  data: karData,
+                  backgroundColor: 'rgba(54,162,235,0.5)',
+                  borderColor: 'rgba(54,162,235,1)',
+                  borderWidth: 1
+                }]
+              },
+              options: {
+                responsive: false,              // <-- ÖNEMLİ: boyut sabitleme
+                maintainAspectRatio: false,     // <-- ÖNEMLİ: container'a uyacak
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: { color: 'white' }
+                  },
+                  x: {
+                    ticks: { color: 'white' }
+                  }
+                },
+                plugins: {
+                  tooltip: {
+                    callbacks: {
+                      title: () => '',
+                      label: (ctx) => {
+                        const val = ctx.parsed.y || 0;
+                        return val.toLocaleString('tr-TR',{ minimumFractionDigits:2, maximumFractionDigits:2 }) + " TL";
+                      }
+                    }
+                  }
+                }
+              }
+            });
+      
+            // B) 6 aylık Chart
+            const labels6 = subeler.map(s => subeMap[s.id]);
+            const karData6 = subeler.map(s => karDataObj6[s.id] || 0);
+      
+            // Renk mantığı (yeşil >60000, kırmızı <40000, mavi normal):
+            const bgColors6 = karData6.map(val => {
+              if (val > 500000 ) return 'rgba(0,255,0,0.6)';   // yeşil
+              if (val < 200000) return 'rgba(255,0,0,0.6)';   // kırmızı
+              return 'rgba(54,162,235,0.5)';                // mavi
+            });
+            const brColors6 = karData6.map(val => {
+              if (val > 500000) return 'rgba(0,200,0,1)';
+              if (val < 200000) return 'rgba(200,0,0,1)';
+              return 'rgba(54,162,235,1)';
+            });
+      
+            if (karChart6) karChart6.destroy();
+      
+            karChart6 = new Chart(karChart6Canvas, {
+              type: 'bar',
+              data: {
+                labels: labels6,
+                datasets: [{
+                  label: 'Kâr (Ocak–Haziran 2024)',
+                  data: karData6,
+                  backgroundColor: bgColors6,
+                  borderColor: brColors6,
+                  borderWidth: 1
+                }]
+              },
+              options: {
+                responsive: false,            // <-- ÖNEMLİ: sabit boyut
+                maintainAspectRatio: false,   // <-- ÖNEMLİ
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: { color: 'white' }
+                  },
+                  x: {
+                    ticks: { color: 'white' }
+                  }
+                },
+                plugins: {
+                  tooltip: {
+                    callbacks: {
+                      title: () => '',
+                      label: (ctx) => {
+                        const val = ctx.parsed.y || 0;
+                        return val.toLocaleString('tr-TR',{ minimumFractionDigits:2, maximumFractionDigits:2 }) + " TL";
+                      }
+                    }
+                  }
+                }
+              }
+            });
+          });
+      
+          // İlk açılışta Ocak 2024 + 6 aylık çiz
+          btnGetData.click();
+        });
+        </script>
+      </main>
+      
+      
+      <script>
+        function checkLogin() {
+          const loggedIn = localStorage.getItem('isLoggedIn');
+          if (loggedIn !== 'true') {
+            window.location.href = '/login.html';
+          }
+        }
+        
+        // Sayfa yüklendiğinde login check
+        document.addEventListener('DOMContentLoaded', () => {
+          checkLogin();
+          // ... sayfanın geri kalan JS ...
+        });
+        </script>
+      
+      
+  </div>
+</body>
+</html>

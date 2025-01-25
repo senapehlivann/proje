@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mahal Kafe</title>
+  <!-- Ana CSS dosyam -->
+  <link rel="stylesheet" href="./assets/style.css" />
+
+  <!-- Font Awesome İkon Paketi (CDN) -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    integrity="sha512-..."
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+</head>
+<body>
+
+  <!-- Üst Kısım: Header -->
+  <header>
+    <div class="header-left">
+      <span class="logo-text">
+        <img src="./assets/images/logo.png">
+      </span>
+    </div>
+    <div class="header-center">
+      <h1>Mahal</h1>
+    </div>
+    <div class="header-right">
+      <i class="fa fa-user"></i>
+      <span class="user-name">Sena Pehlivan</span>
+    </div>
+  </header>
+  <style>
+    /* Filtre & Chart stil */
+    .filters {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .filters select {
+      padding: 5px 10px;
+      font-size: 14px;
+    }
+    #btnGetData {
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    #chartContainer {
+      max-width: 800px;
+      margin-top: 30px;
+    }
+  </style>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+
+
+  <!-- Layout -->
+  <div class="container">
+    <aside class="sidebar">
+        <ul>
+          <li>
+            <a href="/">
+              <i class="fa fa-home"></i> Anasayfa
+            </a>
+          </li>
+          <li>
+            <a href="sube-ciro.html">
+              <i class="fa fa-chart-line"></i> Şube - Ciro Analizleri
+            </a>
+          </li>
+          <li>
+            <a href="sube-kar.html">
+              <i class="fa fa-dollar-sign"></i> Şube - Kar Analizleri
+            </a>
+          </li>
+          <li>
+            <a href="sube-musteri.html">
+              <i class="fa fa-users"></i> Şube Müşteri Analizleri
+            </a>
+          </li>
+          <li>
+            <a href="sube-karsilastirma.html">
+              <i class="fa fa-balance-scale"></i> Şube - Karşılaştırma
+            </a>
+          </li>
+          <!-- Çıkış Yap menüsü -->
+          <li>
+            <a href="#" onclick="logout()">
+              <i class="fa fa-sign-out"></i> Çıkış Yap
+            </a>
+          </li>
+        </ul>
+      </aside>
+      <script>
+        function logout() {
+          // Tüm localStorage değerlerini temizle
+          localStorage.clear();
+          // Giriş sayfasına yönlendir
+          window.location.href = "login.html";
+        }
+      </script>
+
+      <main>
+        <h2>Şube Müşteri Analizleri</h2>
+      
+        <!-- Ay Seçimi -->
+        <div class="filters">
+          <label for="monthSelect">Ay Seç:</label>
+          <select id="monthSelect">
+            <option value="2024-01" selected>Ocak 2024</option>
+            <option value="2024-02">Şubat 2024</option>
+            <option value="2024-03">Mart 2024</option>
+            <option value="2024-04">Nisan 2024</option>
+            <option value="2024-05">Mayıs 2024</option>
+            <option value="2024-06">Haziran 2024</option>
+          </select>
+          <button id="btnGetData">Verileri Göster</button>
+        </div>
+      
+        <!-- 1) Pie Chart (Aylık) -->
+        <div style="max-width: 600px; margin-top: 20px;">
+          <canvas id="musteriPieChart" width="600" height="300"></canvas>
+        </div>
+      
+        <!-- 2) Bar Chart (31 Aralık 2023 – 1 Temmuz 2024 Toplam) -->
+        <h3 style="margin-top: 3rem;">Kapasite Grafiği</h3>
+        <div style="width: 600px; height: 300px;">
+          <canvas id="capacityChart" width="600" height="300"></canvas>
+        </div>
+      
+        <!-- Bu alanda 80.000 üzeri şubeleri listeleyeceğiz -->
+        <div id="capacityMessage" style="margin-top: 1rem; color: rgb(35, 138, 217); margin-left: 2rem; margin-top: 2rem; "></div>
+      
+        <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+      
+          const monthSelect = document.getElementById('monthSelect');
+          const btnGetData = document.getElementById('btnGetData');
+          const musteriPieCanvas = document.getElementById('musteriPieChart');
+          const capacityChartCanvas = document.getElementById('capacityChart');
+          const capacityMsgEl = document.getElementById('capacityMessage');
+      
+          let musteriPieChart = null;    
+          let capacityChart = null;      
+      
+          // Global veri tutucular
+          let subeler = [];
+          let musteriAnaliz = [];
+      
+          // 1) /api/subeler ve /api/musteri-analiz fetch
+          try {
+            const subeResp = await fetch('/api/subeler');
+            if (!subeResp.ok) throw new Error(`Subeler API Hatası: ${subeResp.status}`);
+            subeler = await subeResp.json();
+      
+            const musteriResp = await fetch('/api/musteri-analiz');
+            if (!musteriResp.ok) throw new Error(`Musteri Analiz API Hatası: ${musteriResp.status}`);
+            musteriAnaliz = await musteriResp.json();
+      
+          } catch (err) {
+            console.error("[ERROR] Veri çekilirken hata:", err);
+            return; // Kod sonlansın
+          }
+      
+          /*****************************
+           * 1) Aylık Pie Chart Fonksiyonu
+           *****************************/
+          function drawMonthlyPie(selectedMonth) {
+            const subeIdToMusteri = {};
+            subeler.forEach(s => {
+              subeIdToMusteri[s.id] = 0;
+            });
+      
+            musteriAnaliz.forEach(row => {
+              const tarihAy = row.analiz_tarihi.substring(0,7); 
+              if (tarihAy === selectedMonth) {
+                subeIdToMusteri[row.sube_id] += row.musteri_sayisi;
+              }
+            });
+      
+            const labels = [];
+            const data = [];
+            subeler.forEach(s => {
+              labels.push(s.sube_adi);
+              data.push(subeIdToMusteri[s.id] || 0);
+            });
+      
+            if (musteriPieChart) {
+              musteriPieChart.destroy();
+            }
+      
+            musteriPieChart = new Chart(musteriPieCanvas, {
+              type: 'pie',
+              data: {
+                labels,
+                datasets: [{
+                  label: `Müşteri (${selectedMonth})`,
+                  data,
+                  backgroundColor: [
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 206, 86, 0.6)',
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(153, 102, 255, 0.6)',
+                    'rgba(255, 159, 64, 0.6)',
+                  ],
+                  borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)',
+                  ],
+                  borderWidth: 1
+                }]
+              },
+              options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                plugins: {
+                  tooltip: {
+                    callbacks: {
+                      label: (ctx) => {
+                        const val = ctx.parsed || 0;
+                        return val.toLocaleString('tr-TR') + " müşteri";
+                      }
+                    }
+                  },
+                  legend: {
+                    position: 'right',
+                    labels: { color: 'white' }
+                  }
+                }
+              }
+            });
+          }
+      
+          /*****************************
+           * 2) 31 Aralık 2023–1 Temmuz 2024 Kapasite (Stacked Bar)
+           *****************************/
+          function draw6MonthsCapacity() {
+            const capacityLimit = 130000;
+      
+            // Start & end date: [2023-12-31, 2024-07-01)
+            const startDate = new Date('2023-12-31');
+            const endDate   = new Date('2024-07-01');
+      
+            // Tüm şubeler => 0
+            const subeIdToTotal = {};
+            subeler.forEach(s => {
+              subeIdToTotal[s.id] = 0;
+            });
+      
+            // musteriAnaliz => rowDate in [startDate, endDate)
+            musteriAnaliz.forEach(row => {
+              const rowDate = new Date(row.analiz_tarihi);
+              if (rowDate >= startDate && rowDate < endDate) {
+                subeIdToTotal[row.sube_id] += row.musteri_sayisi;
+              }
+            });
+      
+            // used vs leftover
+            const usedData = [];
+            const leftoverData = [];
+            const labels = [];
+      
+            subeler.forEach(s => {
+              const used = subeIdToTotal[s.id] || 0;
+              let leftover = capacityLimit - used;
+              if (leftover < 0) leftover = 0;
+              usedData.push(used);
+              leftoverData.push(leftover);
+              labels.push(s.sube_adi);
+            });
+      
+            if (capacityChart) {
+              capacityChart.destroy();
+            }
+      
+            capacityChart = new Chart(capacityChartCanvas, {
+              type: 'bar',
+              data: {
+                labels,
+                datasets: [
+                  {
+                    label: 'Doluluk',
+                    data: usedData,
+                    backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                  },
+                  {
+                    label: 'Kalan (Boş Kapasite)',
+                    data: leftoverData,
+                    backgroundColor: 'rgba(54,162,235,0.4)',
+                    borderColor: 'rgba(54,162,235,1)',
+                    borderWidth: 1
+                  }
+                ]
+              },
+              options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                scales: {
+                  x: {
+                    stacked: true,
+                    ticks: { color: 'white' }
+                  },
+                  y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: { color: 'white' }
+                  }
+                },
+                plugins: {
+                  tooltip: {
+                    callbacks: {
+                      label: (ctx) => {
+                        const val = ctx.parsed.y || 0;
+                        return val.toLocaleString('tr-TR') + ' müşteri';
+                      }
+                    }
+                  }
+                }
+              }
+            });
+      
+            // Kapasiteyi aşan şubeler
+            let exceeded = [];
+            subeler.forEach(s => {
+              const used = subeIdToTotal[s.id];
+              if (used > capacityLimit) {
+                exceeded.push(s.sube_adi);
+              }
+            });
+      
+            if (exceeded.length > 0) {
+              capacityMsgEl.innerHTML = 
+                `<div>Şu şubeler ${capacityLimit.toLocaleString('tr-TR')} kapasiteyi aştı, bu bölgede yeni şube açmalısınız:</div>
+                 <ul>${exceeded.map(name => `<li>${name}</li>`).join('')}</ul>`;
+            } else {
+              capacityMsgEl.innerHTML = "";
+            }
+          }
+      
+          /*****************************
+           * Butona Tıklayınca
+           *****************************/
+          btnGetData.addEventListener('click', () => {
+            const selectedMonth = monthSelect.value;
+            // 1) Aylık Pie
+            drawMonthlyPie(selectedMonth);
+            // 2) 31 Aralık – 1 Temmuz Stacked
+            draw6MonthsCapacity();
+          });
+      
+          // Sayfa ilk açıldığında Otomatik
+          btnGetData.click();
+        });
+        </script>
+      </main>
+      
+      
+      
+      
+      
+      
+      
+      <script>
+        function checkLogin() {
+          const loggedIn = localStorage.getItem('isLoggedIn');
+          if (loggedIn !== 'true') {
+            window.location.href = '/login.html';
+          }
+        }
+        
+        // Sayfa yüklendiğinde login check
+        document.addEventListener('DOMContentLoaded', () => {
+          checkLogin();
+          // ... sayfanın geri kalan JS ...
+        });
+        </script>
+      
+
+      
+      
+      
+  </div>
+</body>
+</html>

@@ -1,0 +1,214 @@
+/* ---------- GENEL ---------- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+
+  }
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f9f9f9;
+    color: white;
+    background: black
+ 
+  }
+  
+  /* ---------- HEADER ---------- */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 10px 20px;
+    border-bottom: 2px solid rgb(41, 37, 37);
+  }
+  .header-left, .header-center, .header-right {
+    display: flex;
+    align-items: center;
+  }
+  .logo-text {
+    font-size: 20px;
+    font-weight: bold;
+  }
+  .header-center {
+    flex: 1;
+    justify-content: center;
+
+  }
+  .header-center h1 {
+    font-size: 24px;
+    font-weight: bold;
+  }
+  .header-right i {
+    font-size: 18px;
+    margin-right: 8px;
+  }
+  .header-right .user-name {
+    font-size: 16px;
+    font-weight: 500;
+  }
+  
+  /* ---------- CONTAINER (Sidebar + Main) ---------- */
+  .container {
+    display: flex;
+    min-height: calc(100vh - 60px); /* Header yüksekliğine göre ayarla */
+  }
+  
+  /* ---------- SIDEBAR ---------- */
+  .sidebar {
+    width: 260px;
+    border-right: 1px solid rgb(41, 37, 37);
+    padding: 20px;
+  }
+  .sidebar ul {
+    list-style: none; 
+  }
+  .sidebar li {
+    margin-bottom: 15px; /* menü öğeleri arası boşluk */
+    border: 1px solid ;
+    padding: 10px;
+    border-radius: 10px;
+   color: rgb(110, 107, 107);
+   border-color:rgb(75, 74, 74); ;
+  }
+  .sidebar li a {
+    text-decoration: none;
+    color: #888484;
+    font-weight: 500;
+    display: flex;           /* ikonu ve metni yanyana hizalamak için */
+    align-items: center;
+    transition: color 0.2s;
+  }
+  .sidebar li a i {
+    margin-right: 8px;       /* ikon ile metin arasına boşluk */
+    font-size: 18px;
+  }
+  .sidebar li a:hover {
+    color: #666;
+  }
+  
+  /* ---------- ANA İÇERİK ---------- */
+  main {
+    flex: 1;
+    padding: 20px;
+  }
+  main h2 {
+    margin-bottom: 10px;
+    font-size: 20px;
+  }
+  main p {
+    margin-bottom: 20px;
+  }
+  
+
+  .stats-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 20px;
+  }
+
+  /* Her kutunun genel stili */
+  .stat-box {
+    background: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 20px;
+    text-align: center;  /* ortalama */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1); /* hafif gölge */
+  }
+
+  /* Başlık */
+  .stat-box h3 {
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    color: #444;
+  }
+
+  /* Gösterilecek değer */
+  .stat-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #333;
+    margin-top: 10px;
+  }
+
+  /* İsteğe göre alt açıklama (opsiyonel) */
+  .stat-desc {
+    margin-top: 8px;
+    font-size: 0.9rem;
+    color: #666;
+  }
+
+/* .login tüm ekranı kapsar, siyah arka plan, flex ortalama */
+/* .login: Tam ekran kapla, siyah arka plan, flex ile dikey yerleşim */
+.login {
+  position: fixed;
+  top: 0; 
+  left: 0;
+  width: 100%; 
+  height: 100%;
+  background-color: rgb(7, 37, 87);  /* Siyah arka plan */
+  
+  display: flex;
+  flex-direction: column; /* Resim + login-container dikey */
+  align-items: center;    /* Yatay ortalama */
+  justify-content: center;/* Dikey ortalama */
+}
+
+/* Logo resmi: altta login-container ile araya mesafe */
+.login-logo {
+  margin-bottom: 20px; /* istediğimiz kadar boşluk */
+  max-width: 200px;    /* istersek logo boyutu sınırlayabiliriz */
+}
+
+/* Login kutusu */
+.login-container {
+  background: #222; 
+  color: #fff; 
+  padding: 20px 30px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  min-width: 300px; /* Kutunun min genişliği */
+  box-sizing: border-box;
+  text-align: left; /* Label vs. soldan hizalı olabilir */
+  
+}
+
+.login-container label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+
+.login-container input {
+  width: 100%;
+  padding: 8px; 
+  margin-bottom: 12px;
+  box-sizing: border-box;
+  background: #fff;   /* Inputlar beyaz */
+  color: #000;        /* yazılar siyah */
+  border: none;
+  border-radius: 4px;
+}
+
+.login-container button {
+  width: 100%;
+  padding: 10px;
+  cursor: pointer;
+  background: #007bff;
+  color: #fff;
+  border: none; 
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.login-container button:hover {
+  background: #0056b3;
+}
+
+.error-message {
+  color: red;
+  margin-bottom: 10px;
+  text-align: center;
+}

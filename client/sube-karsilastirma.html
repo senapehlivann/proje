@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mahal Kafe</title>
+  <!-- Ana CSS dosyam -->
+  <link rel="stylesheet" href="./assets/style.css" />
+
+  <!-- Font Awesome İkon Paketi (CDN) -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    integrity="sha512-..."
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+</head>
+<body>
+
+  <!-- Üst Kısım: Header -->
+  <header>
+    <div class="header-left">
+      <span class="logo-text">
+        <img src="./assets/images/logo.png">
+      </span>
+    </div>
+    <div class="header-center">
+      <h1>Mahal</h1>
+    </div>
+    <div class="header-right">
+      <i class="fa fa-user"></i>
+      <span class="user-name">Sena Pehlivan</span>
+    </div>
+  </header>
+  <style>
+    /* Filtre & Chart stil */
+    .filters {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .filters select {
+      padding: 5px 10px;
+      font-size: 14px;
+    }
+    #btnGetData {
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    #chartContainer {
+      max-width: 800px;
+      margin-top: 30px;
+    }
+  </style>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+
+
+  <!-- Layout -->
+  <div class="container">
+    <aside class="sidebar">
+        <ul>
+          <li>
+            <a href="/">
+              <i class="fa fa-home"></i> Anasayfa
+            </a>
+          </li>
+          <li>
+            <a href="sube-ciro.html">
+              <i class="fa fa-chart-line"></i> Şube - Ciro Analizleri
+            </a>
+          </li>
+          <li>
+            <a href="sube-kar.html">
+              <i class="fa fa-dollar-sign"></i> Şube - Kar Analizleri
+            </a>
+          </li>
+          <li>
+            <a href="sube-musteri.html">
+              <i class="fa fa-users"></i> Şube Müşteri Analizleri
+            </a>
+          </li>
+          <li>
+            <a href="sube-karsilastirma.html">
+              <i class="fa fa-balance-scale"></i> Şube - Karşılaştırma
+            </a>
+          </li>
+          <!--  Çıkış Yap menüsü -->
+          <li>
+            <a href="#" onclick="logout()">
+              <i class="fa fa-sign-out"></i> Çıkış Yap
+            </a>
+          </li>
+        </ul>
+      </aside>
+      <script>
+        function logout() {
+          // Tüm localStorage değerlerini temizle
+          localStorage.clear();
+          // Giriş sayfasına yönlendir
+          window.location.href = "login.html";
+        }
+      </script>
+
+      <main>
+        <h2>İki Şube Kâr Karşılaştırma (Ocak–Haziran)</h2>
+      
+        <style>
+          .filters {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+          }
+        </style>
+      
+        <!-- Şube Seçimleri -->
+        <div class="filters">
+          <label for="subeSelect1">Şube 1:</label>
+          <select id="subeSelect1"></select>
+      
+          <label for="subeSelect2">Şube 2:</label>
+          <select id="subeSelect2"></select>
+      
+          <button style="padding: 10px 15px;" id="btnCompare">Karşılaştır</button>
+        </div>
+      
+        <!-- Tek Bar Chart Alanı -->
+        <div style="width: 800px; height: 400px;">
+          <canvas id="compareChart" style="width:100%; height:100%;"></canvas>
+        </div>
+      
+        <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+          const subeSelect1 = document.getElementById('subeSelect1');
+          const subeSelect2 = document.getElementById('subeSelect2');
+          const btnCompare = document.getElementById('btnCompare');
+          const compareCanvas = document.getElementById('compareChart');
+      
+          let compareChart = null;
+      
+          // Veri saklama
+          let subeler = [];
+          let urunler = [];
+          let siparisler = [];
+      
+          // 1) Sunucudan verileri çek
+          try {
+            // Şubeler
+            const subeResp = await fetch('/api/subeler');
+            if (!subeResp.ok) throw new Error('Subeler API hatası');
+            subeler = await subeResp.json();
+      
+            // Ürünler
+            const urunResp = await fetch('/api/urunler');
+            if (!urunResp.ok) throw new Error('Urunler API hatası');
+            urunler = await urunResp.json();
+      
+            // Siparişler
+            const sipResp = await fetch('/api/siparisler');
+            if (!sipResp.ok) throw new Error('Siparisler API hatası');
+            siparisler = await sipResp.json();
+      
+          } catch (err) {
+            console.error("[ERROR] Veri çekilemedi:", err);
+            return;
+          }
+      
+          // 2) Elde ettiğimiz sube listesini <select> içine dolduralım
+          //    subeler: [ {id:1, sube_adi:'Mahal Kafe (Ayvalık)'}, ... ]
+          subeler.forEach((s) => {
+            const opt1 = document.createElement('option');
+            opt1.value = s.id;
+            opt1.textContent = s.sube_adi;
+      
+            const opt2 = document.createElement('option');
+            opt2.value = s.id;
+            opt2.textContent = s.sube_adi;
+      
+            subeSelect1.appendChild(opt1);
+            subeSelect2.appendChild(opt2);
+          });
+      
+          // 3) Kâr marjı fonksiyonu: (satis - alis)
+          const urunMap = {};
+          urunler.forEach((u) => {
+            const alis = parseFloat(u.alis_fiyati) || 0;
+            const satis = parseFloat(u.satis_fiyati) || 0;
+            urunMap[u.id] = (satis - alis);
+          });
+      
+          // 4) Belirli bir subeId için, Ocak–Haziran (1..6) her ay kâr'ı dizi olarak döndür
+          //    [karOcak, karSubat, karMart, karNisan, karMayis, karHaziran]
+          function getKarByMonthForSube(subeId) {
+            // siparisler: { sube_id, urun_id, adet, siparis_tarihi }
+            // urunMap[urun_id] => marj
+            // Y=2024, M=1..6
+            const monthlyKar = [0,0,0,0,0,0]; // 6 eleman (Ocak..Haziran index:0..5)
+      
+            siparisler.forEach((sip) => {
+              if (sip.sube_id === subeId) {
+                const d = new Date(sip.siparis_tarihi);
+                const y = d.getFullYear();
+                const m = d.getMonth()+1; // 1..12
+                if (y === 2024 && m >=1 && m<=6) {
+                  const marj = urunMap[sip.urun_id] || 0;
+                  const adet = sip.adet || 0;
+                  monthlyKar[m-1] += (marj * adet);
+                }
+              }
+            });
+      
+            return monthlyKar; 
+          }
+      
+          // 5) "Karşılaştır" butonuna tıklayınca -> subeSelect1 vs subeSelect2
+          btnCompare.addEventListener('click', () => {
+            const sId1 = parseInt(subeSelect1.value, 10);
+            const sId2 = parseInt(subeSelect2.value, 10);
+      
+            if (sId1 === sId2) {
+              alert("Aynı şubeyi seçemezsiniz!");
+              return;
+            }
+      
+            // A) 2 sube ID'si için Ocak-Haziran kâr dizileri
+            const karArr1 = getKarByMonthForSube(sId1); 
+            const karArr2 = getKarByMonthForSube(sId2);
+      
+            // B) x ekseni = Ocak..Haziran
+            const ayLabels = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran"];
+      
+            // sube_adi bul
+            const subeAdi1 = subeler.find(s => s.id === sId1)?.sube_adi || "Sube1";
+            const subeAdi2 = subeler.find(s => s.id === sId2)?.sube_adi || "Sube2";
+      
+            // Eski chart varsa yok et
+            if (compareChart) {
+              compareChart.destroy();
+            }
+      
+            // C) Tek chart: 2 dataset
+            compareChart = new Chart(compareCanvas, {
+              type: 'bar', // bar ya da line 
+              data: {
+                labels: ayLabels,
+                datasets: [
+                  {
+                    label: subeAdi1,
+                    data: karArr1, 
+                    backgroundColor: 'rgba(54,162,235,0.6)',
+                    borderColor: 'rgba(54,162,235,1)',
+                    borderWidth: 1
+                  },
+                  {
+                    label: subeAdi2,
+                    data: karArr2,
+                    backgroundColor: 'rgba(255,99,132,0.6)',
+                    borderColor: 'rgba(255,99,132,1)',
+                    borderWidth: 1
+                  }
+                ]
+              },
+              options: {
+                responsive: false, 
+                maintainAspectRatio: false,
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      color: 'whitesmoke'
+                    }
+                  },
+                  x: {
+                    ticks: {
+                      color: 'whitesmoke'
+                    }
+                  }
+                },
+                plugins: {
+                  tooltip: {
+                    callbacks: {
+                      label: (ctx) => {
+                        const val = ctx.parsed.y || 0;
+                        // Binlik + ondalık
+                        return val.toLocaleString('tr-TR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + " TL";
+                      }
+                    }
+                  }
+                }
+              }
+            });
+          });
+      
+          // 6) İstersek sayfa açılışında default 1. sube -> id=1, 2. sube -> id=2 yapıp chart oluşturabiliriz
+          // subeSelect1.value = "1";
+          // subeSelect2.value = "2";
+          // btnCompare.click();
+      
+        });
+        </script>
+      </main>
+      
+      
+      
+      
+      <script>
+        function checkLogin() {
+          const loggedIn = localStorage.getItem('isLoggedIn');
+          if (loggedIn !== 'true') {
+            window.location.href = '/login.html';
+          }
+        }
+        
+        // Sayfa yüklendiğinde login check
+        document.addEventListener('DOMContentLoaded', () => {
+          checkLogin();
+          // ... sayfanın geri kalan JS ...
+        });
+        </script>
+      
+
+      
+      
+      
+  </div>
+</body>
+</html>

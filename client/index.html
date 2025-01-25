@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mahal Kafe</title>
+  <!-- Ana CSS dosyam -->
+  <link rel="stylesheet" href="./assets/style.css" />
+
+  <!-- Font Awesome İkon Paketi (CDN) -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    integrity="sha512-..."
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+</head>
+<body>
+
+  <!-- Üst Kısım: Header -->
+  <header>
+    <div class="header-left">
+      <span class="logo-text">
+        <img src="./assets/images/logo.png">
+      </span>
+    </div>
+    <div class="header-center">
+      <h1>Mahal</h1>
+    </div>
+    <div class="header-right">
+      <i class="fa fa-user"></i>
+      <span class="user-name">Sena Pehlivan</span>
+    </div>
+  </header>
+
+  <!-- Sidebar + Main İçerik Konteyneri -->
+  <div class="container">
+    <!-- SOL SİDEBAR -->
+    <aside class="sidebar">
+        <ul>
+          <li>
+            <a href="/">
+              <i class="fa fa-home"></i> Anasayfa
+            </a>
+          </li>
+          <li>
+            <a href="sube-ciro.html">
+              <i class="fa fa-chart-line"></i> Şube - Ciro Analizleri
+            </a>
+          </li>
+          <li>
+            <a href="sube-kar.html">
+              <i class="fa fa-dollar-sign"></i> Şube - Kar Analizleri
+            </a>
+          </li>
+          <li>
+            <a href="sube-musteri.html">
+              <i class="fa fa-users"></i> Şube Müşteri Analizleri
+            </a>
+          </li>
+          <li>
+            <a href="sube-karsilastirma.html">
+              <i class="fa fa-balance-scale"></i> Şube - Karşılaştırma
+            </a>
+          </li>
+          <!--  Çıkış Yap menüsü -->
+          <li>
+            <a href="#" onclick="logout()">
+              <i class="fa fa-sign-out"></i> Çıkış Yap
+            </a>
+          </li>
+        </ul>
+      </aside>
+      <script>
+        function logout() {
+          // Tüm localStorage değerlerini temizle
+          localStorage.clear();
+          // Giriş sayfasına yönlendir
+          window.location.href = "login.html";
+        }
+      </script>
+    <!-- ANA İÇERİK -->
+    <main>
+        <h2>Genel İstatistikler</h2>
+      
+
+      
+        <!-- 3 Kutuyu Yanyana Göster -->
+        <div class="stats-container">
+          <!-- 1) Toplam Şube -->
+          <div class="stat-box">
+            <h3>Toplam Şube Sayısı</h3>
+            <div class="stat-value" id="subeCount">--</div>
+            <!-- Opsiyonel alt açıklama -->
+            <div class="stat-desc" id="subeCountDesc"></div>
+          </div>
+      
+          <!-- 2) En Çok Kâr Elde Eden Şube -->
+          <div class="stat-box">
+            <h3>En Çok Kâr</h3>
+            <div class="stat-value" id="maxKarSube">--</div>
+            <div class="stat-desc" id="maxKarValue"></div>
+          </div>
+      
+          <!-- 3) En Az Kâr Elde Eden Şube -->
+          <div class="stat-box">
+            <h3>En Az Kâr</h3>
+            <div class="stat-value" id="minKarSube">--</div>
+            <div class="stat-desc" id="minKarValue"></div>
+          </div>
+        </div>
+      
+        <!-- Aşağıda verileri (subeler/siparisler/urunler) çekip hesaplayan JS -->
+        <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+          let subeler = [];
+          let urunler = [];
+          let siparisler = [];
+      
+          // HTML'deki kutucukları seç
+          const subeCountEl = document.getElementById('subeCount');
+          const subeCountDescEl = document.getElementById('subeCountDesc');
+      
+          const maxKarSubeEl = document.getElementById('maxKarSube');
+          const maxKarValueEl = document.getElementById('maxKarValue');
+      
+          const minKarSubeEl = document.getElementById('minKarSube');
+          const minKarValueEl = document.getElementById('minKarValue');
+      
+          try {
+            // 1) /api/subeler
+            const subeResp = await fetch('/api/subeler');
+            subeler = await subeResp.json();
+      
+            // 2) /api/urunler (kâr marjı hesaplamak için)
+            const urunResp = await fetch('/api/urunler');
+            urunler = await urunResp.json();
+      
+            // 3) /api/siparisler (hangi şube ne kadar sipariş verdi)
+            const sipResp = await fetch('/api/siparisler');
+            siparisler = await sipResp.json();
+      
+          } catch (err) {
+            console.error("[ERROR] Veriler çekilirken hata:", err);
+            // Hata durumunda kutulara uyarı yazabiliriz:
+            subeCountEl.textContent = "ERR";
+            maxKarSubeEl.textContent = "ERR";
+            minKarSubeEl.textContent = "ERR";
+            return;
+          }
+      
+          // 2) Toplam şube sayısı
+          const totalSube = subeler.length;
+          subeCountEl.textContent = totalSube;
+          subeCountDescEl.textContent = `Sistemde toplam ${totalSube} şube kayıtlı.`;
+      
+          // 3) Kâr marjı: (satis - alis)
+          const urunMap = {};
+          urunler.forEach((u) => {
+            const alis = parseFloat(u.alis_fiyati) || 0;
+            const satis = parseFloat(u.satis_fiyati) || 0;
+            urunMap[u.id] = (satis - alis);
+          });
+      
+          // 4) Tüm şubelerin kâr toplamını hesapla
+          // subeIdToKar: { 1: kar, 2: kar, ... }
+          const subeIdToKar = {};
+          subeler.forEach(s => {
+            subeIdToKar[s.id] = 0;
+          });
+      
+          // Sipariş tablosu => (sube_id, urun_id, adet)
+          siparisler.forEach(sip => {
+            const marj = urunMap[sip.urun_id] || 0;
+            const adet = sip.adet || 0;
+            subeIdToKar[sip.sube_id] += (marj * adet);
+          });
+      
+          // 5) En çok kâr eden ve en az kâr eden şubeyi bul
+          let maxKar = -Infinity;
+          let maxSubeId = null;
+      
+          let minKar = Infinity;
+          let minSubeId = null;
+      
+          Object.keys(subeIdToKar).forEach((subeId) => {
+            const karValue = subeIdToKar[subeId];
+            if (karValue > maxKar) {
+              maxKar = karValue;
+              maxSubeId = parseInt(subeId, 10);
+            }
+            if (karValue < minKar) {
+              minKar = karValue;
+              minSubeId = parseInt(subeId, 10);
+            }
+          });
+      
+          // 6) Kutulara yaz
+          // En Çok Kâr:
+          const maxSubeObj = subeler.find(s => s.id === maxSubeId);
+          if (maxSubeObj) {
+            maxKarSubeEl.textContent = maxSubeObj.sube_adi;
+            // Binlik + 2 ondalık
+            maxKarValueEl.textContent = maxKar.toLocaleString('tr-TR',{minimumFractionDigits:2, maximumFractionDigits:2}) + " TL";
+          }
+      
+          // En Az Kâr:
+          const minSubeObj = subeler.find(s => s.id === minSubeId);
+          if (minSubeObj) {
+            minKarSubeEl.textContent = minSubeObj.sube_adi;
+            minKarValueEl.textContent = minKar.toLocaleString('tr-TR',{minimumFractionDigits:2, maximumFractionDigits:2}) + " TL";
+          }
+      
+        });
+        </script>
+      </main>
+      
+  </div>
+
+  <script>
+    function checkLogin() {
+      const loggedIn = localStorage.getItem('isLoggedIn');
+      if (loggedIn !== 'true') {
+        window.location.href = '/login.html';
+      }
+    }
+    
+    // Sayfa yüklendiğinde login check
+    document.addEventListener('DOMContentLoaded', () => {
+      checkLogin();
+      // ... sayfanın geri kalan JS ...
+    });
+    </script>
+
+  <!-- Ana JS dosyası -->
+  <script src="./scripts/main.js"></script>
+<script src="https://cdnjs.com/libraries/Chart.js"></script>
+</body>
+</html>

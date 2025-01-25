@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mahal Kafe</title>
+  <!-- Ana CSS dosyam -->
+  <link rel="stylesheet" href="./assets/style.css" />
+
+  <!-- Font Awesome İkon Paketi (CDN) -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    integrity="sha512-..."
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  />
+</head>
+<body>
+
+  
+<!-- HTML Örneği -->
+<div class="login">
+    <img src="./assets/images/logo.png" alt="Logo" class="login-logo" />
+    
+    <div class="login-container">
+      <div class="error-message" id="errorMsg"></div>
+      
+      <label for="username">Kullanıcı Adı:</label>
+      <input type="text" id="username" placeholder="Kullanıcı adınızı girin" />
+  
+      <label for="password">Şifre:</label>
+      <input type="password" id="password" placeholder="Şifrenizi girin" />
+  
+      <button id="btnLogin">Giriş</button>
+    </div>
+  </div>
+  
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const btnLogin = document.getElementById('btnLogin');
+  const errorMsg = document.getElementById('errorMsg');
+  const usernameEl = document.getElementById('username');
+  const passwordEl = document.getElementById('password');
+
+  btnLogin.addEventListener('click', () => {
+    const user = usernameEl.value.trim();
+    const pass = passwordEl.value.trim();
+
+    // Basit kontrol: "admin" / "123"
+    if (user === 'senapehlivan' && pass === '123') {
+      // Giriş başarılı => localStorage'a kaydet
+      localStorage.setItem('isLoggedIn', 'true');
+      // Anasayfaya yönlendir (veya sube-ciro.html vb.)
+      window.location.href = '/'; 
+    } else {
+      errorMsg.textContent = 'Hatalı kullanıcı adı veya şifre!';
+    }
+  });
+});
+</script>
+
+</body>
+</html>
